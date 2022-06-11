@@ -94,7 +94,7 @@ class PwnSync(plugins.Plugin):
                     json.dump(uploaded_files, update)
                 break
             else:
-                logging.error(f"PWN-SYNC v{self.__version__}: Upload error: {main_req.reason}")
+                logging.error(f"PWN-SYNC v{self.__version__} Upload error: {main_req.reason}")
                 display.set('status', 'Tar archive upload failed!')
                 display.update()
                 time.sleep(120)
