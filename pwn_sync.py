@@ -18,7 +18,7 @@ with open(f'{pwn_sync_dir}/cfg/config.json', 'r') as cfg:
 
 class PwnSync(plugins.Plugin):
     __author__ = 'alex@jndl.dev'
-    __version__ = '0.9.2'
+    __version__ = '0.9.3'
     __license__ = 'GPL3'
     __description__ = 'Synchronize handshakes to your local server'
 
@@ -82,9 +82,9 @@ class PwnSync(plugins.Plugin):
             with open(f'{pwn_sync_dir}/files/pwn_synced.tar', 'rb') as tar:
                 authentication = {"pwn_auth_token": auth_token}
                 payload = {'pwn_tar': tar, 'json': (json.dumps(authentication))}
-                main_req = requests.post(f'{protocol}://{server_url}/pwn-sync{port}', files = payload, timeout = 60)
+                main_req = requests.post(f'{protocol}://{server_url}/pwn-sync{port}', files = payload)
             if main_req.status_code == 200:
-                logging.info("PWN-SYNC: Successfully uploaded the tar archive")
+                logging.info(f"PWN-SYNC v{self.__version__}: Successfully uploaded the tar archive")
                 requests.post(f'{protocol}://{server_url}/pwn-sync{port}', files = {'json': (json.dumps({"pwn_auth_token": auth_token, "status": "ended_transmission"}))})
                 display.set('status', 'Synchronized!')
                 display.update()
@@ -94,7 +94,7 @@ class PwnSync(plugins.Plugin):
                     json.dump(uploaded_files, update)
                 break
             else:
-                logging.error(f"PWN-SYNC v{self.__version__} Upload error: {main_req.reason}")
+                logging.error(f"PWN-SYNC v{self.__version__}: Upload error: {main_req.reason}")
                 display.set('status', 'Tar archive upload failed!')
                 display.update()
                 time.sleep(120)
