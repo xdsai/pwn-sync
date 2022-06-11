@@ -34,11 +34,11 @@ class PwnSync(plugins.Plugin):
         if not self.ready:
             return
 
-        with open(f'{pwn_sync_dir}/cfg/pwn_uploaded.json', 'r') as uploaded_json:
-            uploaded_files = json.load(uploaded_json)
         display = agent.view()
         while True:
             try:
+                with open(f'{pwn_sync_dir}/cfg/pwn_uploaded.json', 'r') as uploaded_json:
+                    uploaded_files = json.load(uploaded_json)
                 display.set('status','Checking for new handshakes')
                 display.update()
                 logging.info(f"PWN-SYNC v{self.__version__}: Checking for new handshakes")
