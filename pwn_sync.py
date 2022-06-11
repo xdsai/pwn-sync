@@ -53,9 +53,9 @@ class PwnSync(plugins.Plugin):
                             files_to_be_uploaded.append(filename)
                 
                 if len(files_to_be_uploaded) > 0:
-                    display.set('status','Creating tarball')
+                    display.set('status','Creating tar archive')
                     display.update()
-                    logging.info(f"PWN-SYNC v{self.__version__}: Creating tarball")
+                    logging.info(f"PWN-SYNC v{self.__version__}: Creating tar archive")
                     process = subprocess.Popen(f'sudo tar czf {pwn_sync_dir}/files/pwn_synced.tar {files_to_tarball}', shell=True, stdin=None, stdout=open("/dev/null", "w"), stderr=None, executable="/bin/bash")
                     process.wait()
                     if process.returncode > 0:
@@ -68,7 +68,7 @@ class PwnSync(plugins.Plugin):
                     time.sleep(360)
                 
             except Exception as e:
-                logging.error(f"PWN-SYNC v{self.__version__} Error while creating tarball: {e}")
+                logging.error(f"PWN-SYNC v{self.__version__} Error while creating tar archive: {e}")
                 display.set('status', 'Tar archive creation failed!')
                 display.update()
                 time.sleep(360)
@@ -97,5 +97,5 @@ class PwnSync(plugins.Plugin):
                 logging.error(f"PWN-SYNC v{self.__version__} Upload error: {main_req.reason}")
                 display.set('status', 'Tar archive upload failed!')
                 display.update()
-                time.sleep(120)
+                time.sleep(240)
 
