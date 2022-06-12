@@ -25,7 +25,7 @@ def get_content():
                     pwned_tar = request.files['pwn_tar']
                     app.logger.warning('Received a tarball, saving...')
                     pwned_tar.save(f'./files/pwn_synced.tar')
-                    process = subprocess.Popen(f'tar xf ./files/pwn_synced.tar --strip-components 2', shell=True, stdin=None, stdout=open("/dev/null", "w"), stderr=None, executable="/bin/bash")
+                    process = subprocess.Popen(f'tar xf ./files/pwn_synced.tar --strip-components 1', shell=True, stdin=None, stdout=open("/dev/null", "w"), stderr=None, executable="/bin/bash")
                     process.wait()
                     if process.returncode > 0:
                         app.logger.warning(f'tar command failed, returned code: {process.returncode}')
@@ -44,7 +44,7 @@ def get_content():
         
 def send_to_OHC():
     app.logger.warning('Starting auto-upload to Onlinehashcrack')
-    files = os.listdir('./files')
+    files = os.listdir('./handshakes')
     upload_stats = {
         "already_uploaded":0,
         "no_handshake":0,
@@ -61,7 +61,7 @@ def send_to_OHC():
     for pcap in files:
         if pcap.endswith(".pcap"):
             if pcap not in server_uploaded:
-                with open(f'./files/{pcap}', 'rb') as pcap_to_upload:
+                with open(f'./handshakes/{pcap}', 'rb') as pcap_to_upload:
                     data = {'email': email}
                     payload = {'file': pcap_to_upload}
                     try:
