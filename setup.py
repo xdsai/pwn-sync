@@ -43,7 +43,7 @@ with open('./cfg/config.json', 'r') as cfg:
         protocol_input = input('Do you want to change the default protocol? (http -> https) - (y/n): ').lower()
         if len(protocol_input) == 1:
             if protocol_input == 'y':
-                tmp['port'] = 443
+                tmp['port'] = "443"
                 tmp['protocol'] = 'https'
             else:
                 port_input = input('Please the port you want to run the flask server on: ')
