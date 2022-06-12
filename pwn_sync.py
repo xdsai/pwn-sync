@@ -74,26 +74,29 @@ class PwnSync(plugins.Plugin):
                 time.sleep(360)
                 pass
 
-        logging.info(f'PWN-SYNC v{self.__version__} Successfully made the tar archive, sending to webhook')
+        logging.info(f'PWN-SYNC v{self.__version__} Successfully made the tar archive')
         while True:
+            logging.info(f'PWN-SYNC v{self.__version__} Attempting to send the tar archive')
             display.set('status', 'Sending tar archive')
             display.update()            
-            
-            with open(f'{pwn_sync_dir}/files/pwn_synced.tar', 'rb') as tar:
-                authentication = {"pwn_auth_token": auth_token}
-                payload = {'pwn_tar': tar, 'json': (json.dumps(authentication))}
-                main_req = requests.post(f'{protocol}://{server_url}/pwn-sync{port}', files = payload)
-            if main_req.status_code == 200:
-                logging.info(f"PWN-SYNC v{self.__version__}: Successfully uploaded the tar archive")
-                requests.post(f'{protocol}://{server_url}/pwn-sync{port}', files = {'json': (json.dumps({"pwn_auth_token": auth_token, "status": "ended_transmission"}))})
-                display.set('status', 'Synchronized!')
-                display.update()
-                for filename in files_to_be_uploaded:
-                    uploaded_files.append(filename)
-                with open(f'{pwn_sync_dir}/cfg/pwn_uploaded.json', 'w') as update:
-                    json.dump(uploaded_files, update)
-                break
-            else:
+            try:
+                with open(f'{pwn_sync_dir}/files/pwn_synced.tar', 'rb') as tar:
+                    authentication = {"pwn_auth_token": auth_token}
+                    payload = {'pwn_tar': tar, 'json': (json.dumps(authentication))}
+                    main_req = requests.post(f'{protocol}://{server_url}{port}/pwn-sync', files = payload)
+                if main_req.status_code == 200:
+                    logging.info(f"PWN-SYNC v{self.__version__}: Successfully uploaded the tar archive")
+                    requests.post(f'{protocol}://{server_url}{port}/pwn-sync', files = {'json': (json.dumps({"pwn_auth_token": auth_token, "status": "ended_transmission"}))})
+                    display.set('status', 'Synchronized!')
+                    display.update()
+                    for filename in files_to_be_uploaded:
+                        uploaded_files.append(filename)
+                    with open(f'{pwn_sync_dir}/cfg/pwn_uploaded.json', 'w') as update:
+                        json.dump(uploaded_files, update)
+                    break
+                else:
+                    raise Exception(f'Post request status code - {main_req.status_code} - failed to upload')
+            except Exception as e:
                 logging.error(f"PWN-SYNC v{self.__version__} Upload error: {main_req.reason}")
                 display.set('status', 'Tar archive upload failed!')
                 display.update()
