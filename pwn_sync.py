@@ -18,7 +18,7 @@ with open(f'{pwn_sync_dir}/cfg/config.json', 'r') as cfg:
 
 class PwnSync(plugins.Plugin):
     __author__ = 'alex@jndl.dev'
-    __version__ = '0.9.3'
+    __version__ = '0.9.4'
     __license__ = 'GPL3'
     __description__ = 'Synchronize handshakes to your local server'
 
@@ -103,7 +103,7 @@ class PwnSync(plugins.Plugin):
                     raise Exception(f'Post request status code - {main_req.status_code} - failed to upload')
                     
             except Exception as e:
-                logging.error(f"PWN-SYNC v{self.__version__} Upload error: {main_req.reason}")
+                logging.error(f"PWN-SYNC v{self.__version__} Upload error: {e}")
                 display.set('status', 'Tar archive upload failed!')
                 display.update()
                 time.sleep(240)

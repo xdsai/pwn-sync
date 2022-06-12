@@ -25,21 +25,22 @@ def get_content():
                     pwned_tar = request.files['pwn_tar']
                     app.logger.warning('Received a tarball, saving...')
                     pwned_tar.save(f'./files/pwn_synced.tar')
-                    process = subprocess.Popen(f'tar xf --strip-components 2 ./files/pwn_synced.tar', shell=True, stdin=None, stdout=open("/dev/null", "w"), stderr=None, executable="/bin/bash")
+                    process = subprocess.Popen(f'tar xf ./files/pwn_synced.tar --strip-components 2', shell=True, stdin=None, stdout=open("/dev/null", "w"), stderr=None, executable="/bin/bash")
                     process.wait()
                     if process.returncode > 0:
                         app.logger.warning(f'tar command failed, returned code: {process.returncode}')
                         abort(400)
                     app.logger.warning('Extracted the tarball archive')
                     return 'Success', 200
-
                 if 'status' in auth:
                     if auth['status'] == "ended_transmission":
                         app.logger.warning('Transmission completed successfully')
                         if auto_upload == 'y':
                             threading.Thread(target = send_to_OHC).start()
-                        return 'Success', 200        
-            abort(400)
+                        return 'Success', 200     
+            else:
+                app.logger.warning('Invalid Auth token received')   
+                abort(400)
         
 def send_to_OHC():
     app.logger.warning('Starting auto-upload to Onlinehashcrack')
