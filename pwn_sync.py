@@ -18,7 +18,7 @@ with open(f'{pwn_sync_dir}/cfg/config.json', 'r') as cfg:
 
 class PwnSync(plugins.Plugin):
     __author__ = 'alex@jndl.dev'
-    __version__ = '0.9.4'
+    __version__ = '1.0.0'
     __license__ = 'GPL3'
     __description__ = 'Synchronize handshakes to your local server'
 
