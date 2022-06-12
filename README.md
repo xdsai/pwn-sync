@@ -38,9 +38,13 @@ app.run(host='0.0.0.0', port=int(cfg_port), ssl_context=('/path/to/fullchain.pem
 
 Clone the repository on your pwnagotchi as well, and install the requirements. Then run setup.py.
 
-When prompted for a token, input the one you have received from your server side, this will make authentication on both sides work. If this token is invalid, nothing will work. Email isn't neccessary in this case, but make sure to enter the right port, server_url/IP and protocol.
+When prompted for a token, input the one you have received from your server side, this will make authentication on both sides work. If this token is invalid, nothing will work. Email isn't neccessary in this case, but make sure to enter the right port, server_url/IP of the machine that runs the server and protocol.
 
-Then, move the pwn_sync.py to your plugins directory, leave the rest in your home directory, and enable the plugin in config.yaml on your pwnagotchi.
+Then, move the pwn_sync.py to your installed plugins directory, leave the rest in your home directory, anywhere else it won't work as the paths had to have been hardcoded, and enable the plugin in config.yaml by adding the line below, or enable the switch in webcfg.
+
+```
+main.plugins.pwn_sync.enable = true
+```
 
 ### OHC Monitor Notes
 
