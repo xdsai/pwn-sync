@@ -46,7 +46,7 @@ with open('./cfg/config.json', 'r') as cfg:
                 tmp['port'] = "443"
                 tmp['protocol'] = 'https'
             else:
-                port_input = input('Please the port you want to run the flask server on: ')
+                port_input = input('Please enter the port you want to run the flask server on: ')
                 tmp['port'] = port_input
             break
 
