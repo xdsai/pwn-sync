@@ -64,8 +64,8 @@ while True:
                                 for geojson in os.listdir('./files'):
                                     if geojson.endswith('.geo.json'):
                                         if geojson == f'{essid}_{bssid}.geo.json':
-                                            with open(f'./files/{geojson}', 'r') as fd:
-						geo = json.loads(fd)
+                                            with open(f'./files/{geojson}', 'r') as geo_json:
+                                                geo = json.load(geo_json)
                                                 lat = geo['location']['lat']
                                                 lng = geo['location']['lng']
                                                 embed['embeds'][0]['description'] = f'[Google Maps](https://www.google.com/maps/place/{lat},{lng})'
