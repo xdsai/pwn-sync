@@ -97,7 +97,7 @@ class PwnSync(plugins.Plugin):
                         uploaded_files.append(filename)
                     with open(f'{pwn_sync_dir}/cfg/pwn_uploaded.json', 'w') as update:
                         json.dump(uploaded_files, update)
-                    break
+                    exit(1)
 
                 else:
                     raise Exception(f'Post request status code - {main_req.status_code} - failed to upload')
