@@ -1,84 +1,140 @@
-import requests, csv, json, time, os, logging, random
+import os
+import csv
+import json
+import time
+import logging
+import random
 
-with open('./cfg/config.json', 'r') as cfg:
-    cfg = json.load(cfg)
-    webhook = cfg['webhook']
-    email = cfg['email']
+import requests
+
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+CFG_PATH = os.path.join(BASE_DIR, 'cfg', 'config.json')
+CRACKED_PATH = os.path.join(BASE_DIR, 'cfg', 'cracked.json')
+GEO_DIR = os.path.join(BASE_DIR, 'files')
+CSV_PATH = os.path.join(BASE_DIR, 'cfg', 'ohc.csv')
+
+DASHBOARD_URL = 'https://www.onlinehashcrack.com/dashboard'
+CSV_EXPORT_URL = 'https://www.onlinehashcrack.com/wpa-exportcsv'
+
+POLL_INTERVAL = 3600  # 1 hour
+ERROR_SLEEP_MIN = 600
+ERROR_SLEEP_MAX = 1800
+
 logging.basicConfig(level=logging.INFO)
-dashboard_url = 'https://www.onlinehashcrack.com/dashboard'
 
-s = requests.Session()
-logging.info('Loading config successful, starting Onlinehashcrack monitor...')
 
-while True:
-    try:
+def load_config():
+    with open(CFG_PATH, 'r') as f:
+        config = json.load(f)
+    return config['webhook'], config['email']
 
-        s.get(dashboard_url, timeout = 60)
-        auth_post = s.post(dashboard_url, data = {'emailTasks': email, 'submit':''})# get request to the dashboard, then auth with the email
-        csv_req = s.get('https://www.onlinehashcrack.com/wpa-exportcsv')            # export .csv summary of the dashboard
-        
-        if csv_req.status_code == 200:
 
-            with open('./cfg/ohc.csv', 'wb') as csv_init:                           # save the CSV file captured in the request
-                csv_init.write(csv_req.content)
+def load_cracked():
+    with open(CRACKED_PATH, 'r') as f:
+        return json.load(f)
 
-            with open('./cfg/ohc.csv', 'rb') as fi:
-                data = fi.read()
 
-            with open('./cfg/ohc.csv', 'wb') as fo:
-                fo.write(data.replace(b'\x00', b''))                                # edge case for when the network SSID is a null byte
+def save_cracked(cracked):
+    with open(CRACKED_PATH, 'w') as f:
+        json.dump(cracked, f)
 
-            with open('./cfg/ohc.csv', 'r') as csvfile:
-                csv_dash = csv.reader(csvfile)
-                with open('./cfg/cracked.json', 'r') as cracked_json:               # load and compare the new dashboard with previously cracked passwords
-                    cracked = json.load(cracked_json)
 
-                for row in csv_dash:
-                    if len(row) > 1:
-                        password = row[4]
-                        essid = row[1]
-                        bssid = row[2]
+def fetch_dashboard_csv(session, email):
+    session.get(DASHBOARD_URL, timeout=60)
+    session.post(DASHBOARD_URL, data={'emailTasks': email, 'submit': ''}, timeout=60)
+    resp = session.get(CSV_EXPORT_URL, timeout=60)
+    resp.raise_for_status()
+    return resp.content
 
-                        if password != '' and (password != 'password' and essid != "ESSID"):
-                            found = False                         
-                            for saved in cracked:
-                                if essid in saved['ESSID']:
-                                    found = True                                    # ESSID already in cracked.json
 
-                            if not found:
-                                cracked.append({"ESSID": essid, "password": password})
-                                embed = {'embeds': [{
-                                    'title': "Password found!",
-                                    'color': 16739436,
-                                    'fields': [
-                                        {
-                                            'name': f'{essid}',
-                                            'value': f'||{password}||'
-                                        }],
-                                    'footer': {
-                                        "text": f'Captured @ {row[0]}'
-                                    }}]}
+def parse_csv(raw_bytes):
+    # strip null bytes (edge case: SSID contains null bytes)
+    cleaned = raw_bytes.replace(b'\x00', b'')
+    text = cleaned.decode('utf-8', errors='replace')
+    reader = csv.reader(text.splitlines())
 
-                                bssid = bssid.replace(':', '')                      # make WiFi names more readable
-                                essid = essid.replace('-', '').replace('_', '').replace(' ', '')
+    results = []
+    for row in reader:
+        if len(row) < 5:
+            continue
+        captured, essid, bssid, _hash_type, password = row[0], row[1], row[2], row[3], row[4]
+        if password and password != 'password' and essid != 'ESSID':
+            results.append({
+                'captured': captured,
+                'essid': essid,
+                'bssid': bssid,
+                'password': password,
+            })
+    return results
 
-                                for geojson in os.listdir('./files'):
-                                    if geojson.endswith('.geo.json'):
-                                        if geojson == f'{essid}_{bssid}.geo.json':  # check if there's a corresponding .geo.json file
-                                            with open(f'./files/{geojson}', 'r') as geo_json:
-                                                geo = json.load(geo_json)           # and attach it to the embed
-                                                lat = geo['location']['lat']
-                                                lng = geo['location']['lng']
-                                                embed['embeds'][0]['description'] = f'[Google Maps](https://www.google.com/maps/place/{lat},{lng})'
-                                
-                                requests.post(webhook, json = embed)                # final embed gets posted to the webhook
 
-                with open('./cfg/cracked.json', 'w') as update:
-                    json.dump(cracked, update)
-                    
-        time.sleep(3600)
+def find_geo_json(essid, bssid):
+    clean_bssid = bssid.replace(':', '')
+    clean_essid = essid.replace('-', '').replace('_', '').replace(' ', '')
+    expected = f'{clean_essid}_{clean_bssid}.geo.json'
 
-    except Exception as e:
-        logging.error(f'Error occurred, callback: {e}, sleeping...')
-        time.sleep(random.randint(600,1800))
-        pass
+    geo_path = os.path.join(GEO_DIR, expected)
+    if not os.path.exists(geo_path):
+        return None
+
+    with open(geo_path, 'r') as f:
+        geo = json.load(f)
+    loc = geo.get('location', {})
+    lat, lng = loc.get('lat'), loc.get('lng')
+    if lat and lng:
+        return f'https://www.google.com/maps/place/{lat},{lng}'
+    return None
+
+
+def notify_webhook(webhook, entry, maps_url=None):
+    embed = {
+        'title': 'Password found!',
+        'color': 16739436,
+        'fields': [{'name': entry['essid'], 'value': f"||{entry['password']}||"}],
+        'footer': {'text': f"Captured @ {entry['captured']}"},
+    }
+    if maps_url:
+        embed['description'] = f'[Google Maps]({maps_url})'
+
+    requests.post(webhook, json={'embeds': [embed]}, timeout=10)
+
+
+def check_for_cracked(webhook, email):
+    session = requests.Session()
+    raw_csv = fetch_dashboard_csv(session, email)
+    entries = parse_csv(raw_csv)
+    cracked = load_cracked()
+    known_essids = {c['ESSID'] for c in cracked}
+
+    new_count = 0
+    for entry in entries:
+        if entry['essid'] in known_essids:
+            continue
+
+        maps_url = find_geo_json(entry['essid'], entry['bssid'])
+        notify_webhook(webhook, entry, maps_url)
+
+        cracked.append({'ESSID': entry['essid'], 'password': entry['password']})
+        known_essids.add(entry['essid'])
+        new_count += 1
+
+    if new_count > 0:
+        save_cracked(cracked)
+    logging.info(f'Check complete: {new_count} new passwords found')
+
+
+def main():
+    webhook, email = load_config()
+    logging.info('OnlineHashCrack monitor started')
+
+    while True:
+        try:
+            check_for_cracked(webhook, email)
+            time.sleep(POLL_INTERVAL)
+        except Exception as e:
+            logging.error(f'Error: {e}')
+            time.sleep(random.randint(ERROR_SLEEP_MIN, ERROR_SLEEP_MAX))
+
+
+if __name__ == '__main__':
+    main()

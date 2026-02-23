@@ -1,47 +1,82 @@
-# Pwnagotchi Sync
+# pwn-sync
 
-A synchronization tool that allows you to synchronize your .pcap and .geo.json files from your [Pwnagotchi](https://pwnagotchi.ai) to your home server with the option of automatically uploading them to [Onlinehashcrack](https://www.onlinehashcrack.com/). It utilizes a flask server for receiving and processing files on your home server/network, and the pwnagotchi sends any new captured files to the server as soon as it detects internet connectivity. The server can then upload the handshakes via OHC's API and the monitoring script then sends any newly cracked networks to a discord webhook along with a Google maps link with the coordinates of the network, if any are found.
+A synchronization toolset for [Pwnagotchi](https://pwnagotchi.ai) that syncs captured `.pcap` and `.geo.json` handshake files to your home server, with optional auto-upload to [OnlineHashCrack](https://www.onlinehashcrack.com/) and Discord notifications for cracked passwords.
 
-## Server Install
+## Components
 
-Clone the repository and cd into it ->
+| File | What it does |
+|------|-------------|
+| `pwn_sync.py` | Pwnagotchi plugin — detects new handshakes and uploads them to your server |
+| `server.py` | Flask server — receives handshakes, extracts them, optionally uploads to OHC |
+| `ohc_monitor.py` | Monitors OHC dashboard for cracked passwords, sends Discord webhook notifications |
+| `configure.py` | Interactive setup wizard for both server and pwnagotchi sides |
+
+## How it works
 
 ```
+Pwnagotchi → (tar archive over HTTP) → Flask Server → (auto-upload) → OnlineHashCrack
+                                                                            ↓
+                                          Discord Webhook ← ohc_monitor.py checks for cracked passwords
+```
+
+1. The Pwnagotchi plugin runs on every internet connection event. It checks for new `.pcap` / `.geo.json` files, tarballs them, and POSTs them to your server.
+2. The server receives and extracts the handshakes. If auto-upload is enabled, it pushes each `.pcap` to OnlineHashCrack's API.
+3. The OHC monitor polls the dashboard periodically. When new passwords are cracked, it sends an embed to your Discord webhook — with a Google Maps link if geo data is available.
+
+## Server setup
+
+```bash
 git clone https://github.com/xdsai/pwn-sync.git && cd pwn-sync
-```
-
-Install the required dependencies with pip ->
-
-```
 pip install -r requirements.txt
+python3 configure.py
+python3 server.py
 ```
 
-And run the setup.py script ->
+The setup wizard will ask for:
+- Whether to auto-upload to OHC (+ email if yes)
+- Auth token (generate or enter existing)
+- Server hostname/IP
+- Discord webhook URL
+- Protocol (HTTP/HTTPS) and port
 
-```
-python3 setup.py
-```
+### Running the OHC monitor
 
-### Server Notes
+If auto-upload is enabled, run the monitor as a daemon to get Discord alerts for cracked passwords:
 
-The setup will prompt you to enter needed information for the scripts to work. You are first asked whether you want the scripts to automatically upload all handshakes to OHC, if yes you have to enter an email address. This will be used to upload the handshakes to the API under your account, where you can later retrieve them from their dashboard.
-
-You have 2 options of running the flask server. First one is you can run it locally, and your Pwnagotchi will only be able to sync to the server when it's connected to the same network as the server. In this case, choose http as the desired protocol and in the server_url field, enter the local IP address of the machine the server is running on. Port doesn't matter much, but be sure to choose an unused one, preferably above 1000.
-
-If you decide to make the flask server available to the outside world, allowing uploads from anywhere, you have to use your [public IP](https://jndl.dev/ip) in the server_url field and make sure you have port forwarding set up for the server. You are encouraged to use HTTPS in this case.
-
-### Pwnagotchi Install
-
-Clone the repository on your pwnagotchi as well, and install the requirements. Then run setup.py.
-
-When prompted for a token, input the one you have received from your server side, this will make authentication on both sides work. If this token is invalid, nothing will work. This is a small form of protection, so that not just anyone can send you requests. Email isn't neccessary in this case, but make sure to enter the right port, server_url/IP of the machine that runs the server and protocol.
-
-Then, move the pwn_sync.py to your installed plugins directory, leave the rest in your home directory, anywhere else it won't work as the paths were hardcoded, and enable the plugin in config.yaml by adding the line below, or enable the switch in webcfg.
-
-```
-main.plugins.pwn_sync.enable = true
+```bash
+python3 ohc_monitor.py
 ```
 
-### OHC Monitor Notes
+## Pwnagotchi setup
 
-The ohc_monitor.py script is made to detect any newly cracked networks from Onlinehashcrack. It downloads all your networks in csv form and checks against a saved list of previously cracked networks. Any changes are sent to the discord webhook, with a Google Maps link with the coordinates of the network, if any are found. Recommended to run 24/7 as a daemon, if your automatic uploading to OHC is disabled, there's no point to running this.
+Clone the repo on your Pwnagotchi and run the setup wizard:
+
+```bash
+git clone https://github.com/xdsai/pwn-sync.git && cd pwn-sync
+pip install -r requirements.txt
+python3 configure.py
+```
+
+Use the same auth token as your server. Then copy the plugin into your plugins directory:
+
+```bash
+cp pwn_sync.py /path/to/pwnagotchi/plugins/
+```
+
+Enable it in `config.toml`:
+
+```toml
+main.plugins.pwn_sync.enabled = true
+```
+
+The rest of the repo (`cfg/`, `files/`) should stay in the Pwnagotchi's home directory.
+
+## Networking options
+
+**Local only:** Use `http`, your server's local IP, and any unused port. The Pwnagotchi must be on the same network.
+
+**Remote:** Use your public IP or domain, set up port forwarding, and use `https` with port `443`. The auth token provides basic protection against unauthorized uploads.
+
+## License
+
+GPL-3.0

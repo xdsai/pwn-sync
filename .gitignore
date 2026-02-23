@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+*.egg-info/
+
+# runtime files
+cfg/ohc.csv
+files/pwn_synced.tar
+files/*.pcap
+files/*.geo.json
+
+# keep the directories
+!files/.gitkeep
+!handshakes/.gitkeep
